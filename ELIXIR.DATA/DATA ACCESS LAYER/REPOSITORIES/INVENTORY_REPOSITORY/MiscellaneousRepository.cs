@@ -434,7 +434,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
 
             var items = _context.MiscellaneousIssueDetails.Where(x => x.IsActive == true)
                                                           .Where(x => x.IsTransact != true)
-                                                          .Where(x => x.PreparedBy == employee.UserName)
+                                                          .Where(x => x.PreparedBy == employee.FullName)
                 .Select(x => new MIssueDto
                 {
                     Id = x.Id,

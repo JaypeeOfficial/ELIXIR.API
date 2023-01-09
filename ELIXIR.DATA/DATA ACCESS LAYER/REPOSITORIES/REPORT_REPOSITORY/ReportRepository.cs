@@ -365,7 +365,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
         public async Task<IReadOnlyList<MoveOrderReport>> TransactedMoveOrderReport(string DateFrom, string DateTo) 
         {
             var orders = (from transact in _context.TransactMoveOrder
-                          where transact.IsActive == true && transact.IsTransact == true && transact.PreparedDate >= DateTime.Parse(DateFrom) && transact.PreparedDate <= DateTime.Parse(DateTo)
+                          where transact.IsActive == true && transact.IsTransact == true && transact.DeliveryDate >= DateTime.Parse(DateFrom) && transact.DeliveryDate <= DateTime.Parse(DateTo)
                           join moveorder in _context.MoveOrders
                           on transact.OrderNo equals moveorder.OrderNo into leftJ
                           from moveorder in leftJ.DefaultIfEmpty()
@@ -846,7 +846,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                                          Ending = (total.Key.ReceiveIn + total.Key.ReceiptIn + total.Key.TransformIn) - (total.Key.MoveOrder + total.Key.Transformation + total.Key.Issue),
                                          CurrentStock = total.Key.SOH,
                                          PurchasedOrder = total.Key.ReceivePlus + total.Key.TransformPlus + total.Key.ReceiptPlus,
-                                         Others = total.Key.MoveOrderPlus + total.Key.TransformOutPlus + total.Key.IssuePlus
+                                         OthersPlus = total.Key.MoveOrderPlus + total.Key.TransformOutPlus + total.Key.IssuePlus
 
                                      });
 

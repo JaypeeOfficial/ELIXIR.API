@@ -457,8 +457,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.IMPORT_REPOSITORY
 
         public async Task<bool> ValidatePOAndItemcodeManual(int ponumber, string itemcode)
         {
-            var validate = await _context.POSummary.Where(x => x.PO_Number == ponumber)
-                                                   .Where(x => x.ItemCode == itemcode)
+              var validate = await _context.POSummary.Where(x => x.PO_Number == ponumber)
+                                                 .Where(x => x.ItemCode == itemcode)
                                                    .FirstOrDefaultAsync();
 
             if (validate == null)
