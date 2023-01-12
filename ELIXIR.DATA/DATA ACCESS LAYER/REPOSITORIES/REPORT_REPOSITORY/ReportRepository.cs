@@ -365,7 +365,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
         public async Task<IReadOnlyList<MoveOrderReport>> TransactedMoveOrderReport(string DateFrom, string DateTo) 
         {
             var orders = (from transact in _context.TransactMoveOrder
-                          where transact.IsActive == true && transact.IsTransact == true && transact.DeliveryDate >= DateTime.Parse(DateFrom) && transact.DeliveryDate <= DateTime.Parse(DateTo)
+                          where transact.IsActive == true && transact.IsTransact == true && transact.PreparedDate >= DateTime.Parse(DateFrom) && transact.PreparedDate <= DateTime.Parse(DateTo)
                           join moveorder in _context.MoveOrders
                           on transact.OrderNo equals moveorder.OrderNo into leftJ
                           from moveorder in leftJ.DefaultIfEmpty()
@@ -403,7 +403,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
 
                           select new MoveOrderReport
                           {
-
                               OrderNo = total.Key.OrderNo,
                               CustomerName = total.Key.CustomerName,
                               CustomerCode = total.Key.CustomerCode,
@@ -417,28 +416,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                               TransactedDate = total.Key.TransactedDate,
                               BatchNo = total.Key.BatchNo,
                               DeliveryDate = total.Key.DeliveryDate
-
-                          });
-                          //select new MoveOrderReport
-                          //{
-                          //    OrderNo = moveorder.OrderNo,
-                          //    CustomerName = moveorder.FarmName,
-                          //    CustomerCode = moveorder.FarmCode,
-                          //    FarmCode = moveorder.FarmCode,
-                          //    FarmName = moveorder.FarmName,
-                          //    FarmType = moveorder.FarmType,
-                          //    ItemCode = moveorder.ItemCode, 
-                          //    ItemDescription = moveorder.ItemDescription, 
-                          //    Uom = moveorder.Uom,
-                          //    Quantity = moveorder.QuantityOrdered, 
-                          //    MoveOrderDate = moveorder.ApprovedDate.ToString(),
-                          //    TransactedBy = transact.PreparedBy,
-                          //    TransactionType = moveorder.DeliveryStatus,
-                          //    TransactedDate = transact.PreparedDate.ToString(),          
-                          //    BatchNo = moveorder.BatchNo,
-                          //    DeliveryDate = transact.DeliveryDate.ToString()                         
-                          //});
-
+                          }).OrderBy(x => x.TransactedDate);
+        
             return await orders.ToListAsync();
         }
 
