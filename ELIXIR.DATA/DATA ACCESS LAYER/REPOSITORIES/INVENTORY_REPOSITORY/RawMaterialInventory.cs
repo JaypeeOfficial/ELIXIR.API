@@ -933,33 +933,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
               Quantity = x.Sum(x => x.ActualGood)
           });
 
-            //var getLastUsed = (from transform in _context.Transformation_Preparation
-            //                   where transform.IsActive == true && transform.IsMixed == true
-            //                   select new
-            //                   {
-            //                       ItemCode = transform.ItemCode,
-            //                       PreparedDate = (DateTime?)transform.PreparedDate
-            //                   }).Distinct()
-            //                   .Union
-            //                    (from moveorder in _context.MoveOrders
-            //                     where moveorder.IsActive == true && moveorder.IsPrepared == true
-            //                     select new
-            //                     {
-            //                         ItemCode = moveorder.ItemCode,
-            //                         PreparedDate = moveorder.PreparedDate
-
-            //                     });
-            //.OrderByDescending(x => x.PreparedDate);
-
-
-            //var x = getLastUsed.ToLookup(x => new
-            //{ 
-            //    x.PreparedDate,
-            //    x.ItemCode
-            //}).Distinct();
-
-            // var xx = getLastUsed;
-
             var inventory = (from rawmaterial in _context.RawMaterials
                              join posummary in getPoSummary
                              on rawmaterial.ItemCode equals posummary.ItemCode
@@ -1064,7 +1037,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
                                  ReserveUsage = reserveusage.Reserve != null ? reserveusage.Reserve : 0,
                                  TransformFrom = transformfrom.WeighingScale != null ? transformfrom.WeighingScale : 0,
                                  TransformTo = transformto.Quantity != null ? transformto.Quantity : 0
-                                 //  LastUsed = lastUsed.PreparedDate != null ? lastUsed.PreparedDate : null
+                      
 
                              } into total
 
@@ -1090,13 +1063,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
                                  ReserveUsage = total.Key.ReserveUsage,
                                  TransformFrom = total.Key.TransformFrom,
                                  TransformTo = total.Key.TransformTo
-                                 //LastUsed = (from a in _context.MoveOrders
-                                 //            orderby a.PreparedDate descending
-                                 //            select new MoveOrderDto
-                                 //            {
-                                 //              PreparedDate = a.PreparedDate.ToString()
-                                 //            }).FirstOrDefault()
-
+   
                              });
 
             return await PagedList<MRPDto>.CreateAsync(inventory, userParams.PageNumber, userParams.PageSize);
@@ -1425,7 +1392,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
 
 
           var getTransformTo = _context.WarehouseReceived.Where(x => x.IsActive == true)
-                                                       .Where(x => x.TransactionType == "Transformation")
+                                                         .Where(x => x.TransactionType == "Transformation")
           .GroupBy(x => new
 
           {
