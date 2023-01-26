@@ -148,6 +148,31 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                                  Recipe_Quantity = preparation.WeighingScale != null ? preparation.WeighingScale : 0,
                                  DateTransformed = warehouse.ManufacturingDate.ToString()
 
+                             }).GroupBy(x => new
+                             {
+                                 x.TransformationId,
+                                 x.PlanningDate,
+                                 x.ItemCode_Formula,
+                                 x.ItemDescription_Formula,
+                                 x.Version,
+                                 x.Batch,
+                                 x.Formula_Quantity,
+                                 x.ItemCode_Recipe,
+                                 x.ItemDescription_Recipe,
+                                 x.Recipe_Quantity
+
+                             }).Select(transform => new TransformationReport
+                             {
+                                 TransformationId = transform.Key.TransformationId, 
+                                 PlanningDate = transform.Key.PlanningDate.ToString(), 
+                                 ItemCode_Formula = transform.Key.ItemCode_Formula, 
+                                 Version = transform.Key.Version, 
+                                 Batch = transform.Key.Batch, 
+                                 Formula_Quantity = transform.Key.Formula_Quantity, 
+                                 ItemCode_Recipe = transform.Key.ItemCode_Recipe, 
+                                 ItemDescription_Recipe = transform.Key.ItemDescription_Recipe, 
+                                 Recipe_Quantity = transform.Key.
+
                              });
 
             return await transform.ToListAsync();
