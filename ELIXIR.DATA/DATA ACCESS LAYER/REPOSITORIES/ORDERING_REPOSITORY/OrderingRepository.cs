@@ -1,4 +1,4 @@
-﻿ using ELIXIR.DATA.CORE.INTERFACES.ORDERING_INTERFACE;
+﻿using ELIXIR.DATA.CORE.INTERFACES.ORDERING_INTERFACE;
 using ELIXIR.DATA.DATA_ACCESS_LAYER.HELPERS;
 using ELIXIR.DATA.DATA_ACCESS_LAYER.MODELS.ORDERING_MODEL;
 using ELIXIR.DATA.DATA_ACCESS_LAYER.STORE_CONTEXT;
@@ -8,9 +8,11 @@ using ELIXIR.DATA.DTOs.TRANSFORMATION_DTOs;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using ELIXIR.DATA.SERVICES;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
 {
@@ -19,9 +21,11 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
     {
 
        private readonly StoreContext _context;
-        public OrderingRepository(StoreContext context)
+       private readonly IHubContext<OrderHub> _hub;
+       public OrderingRepository(StoreContext context, IHubContext<OrderHub> hub)
         {
             _context = context;
+            _hub = hub;
         }
         public async Task<IReadOnlyList<OrderDto>> GetAllListofOrders(string farms)
         {
@@ -77,47 +81,22 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 Quantity = x.Sum(x => x.Quantity)
             });
 
-            var getReserve = (from warehouse in getWarehouseStock
-                              join request in getTransformationReserve
-                              on warehouse.ItemCode equals request.ItemCode
-                              into leftJ1
-                              from request in leftJ1.DefaultIfEmpty()
-
-                              join ordering in getOrderingReserve
-                              on warehouse.ItemCode equals ordering.ItemCode
-                              into leftJ2
-                              from ordering in leftJ2.DefaultIfEmpty()
-
-                              join issue in getIssueOut 
-                              on warehouse.ItemCode equals issue.ItemCode
-                              into leftJ3
-                              from issue in leftJ3.DefaultIfEmpty()
-
-                              group new
-                              {
-                                  warehouse,
-                                  request,
-                                  ordering,
-                                  issue
-                              }
-                              by new
-                              {
-                                  warehouse.ItemCode,
-
-                              } into total
-
-                              select new ReserveInventory
-                              {
-
-                                  ItemCode = total.Key.ItemCode,
-                                  Reserve = total.Sum(x => x.warehouse.ActualGood == null ? 0 : x.warehouse.ActualGood) -
-                                           (total.Sum(x => x.request.QuantityOrdered == null ? 0 : x.request.QuantityOrdered) +
-                                            total.Sum(x => x.ordering.QuantityOrdered == null ? 0 : x.ordering.QuantityOrdered) +
-                                            total.Sum(x => x.issue.Quantity == null ? 0 : x.issue.Quantity))
-                              });
-
-
-
+            var getReserve = getWarehouseStock
+                .GroupJoin(getTransformationReserve, warehouse => warehouse.ItemCode, request => request.ItemCode, (warehouse, request) => new {warehouse, request})
+                .SelectMany(x => x.request.DefaultIfEmpty(), (x, request) => new {x.warehouse, request})
+                .GroupJoin(getOrderingReserve, warehouse => warehouse.warehouse.ItemCode, ordering => ordering.ItemCode, (warehouse, ordering) => new {warehouse, ordering})
+                .SelectMany(x => x.ordering.DefaultIfEmpty(), (x, ordering) => new {x.warehouse, ordering})
+                .GroupJoin(getIssueOut, warehouse => warehouse.warehouse.warehouse.ItemCode, issue => issue.ItemCode, (warehouse, issue) => new {warehouse, issue})
+                .SelectMany(x => x.issue.DefaultIfEmpty(), (x, issue) => new {x.warehouse, issue})
+                .GroupBy( x => x.warehouse.warehouse.warehouse.ItemCode)
+                .Select( x => new ReserveInventory
+                {
+                    ItemCode = x.Key,
+                    Reserve = x.Sum(x => x.warehouse.warehouse.warehouse.ActualGood == null ? 0 : x.warehouse.warehouse.warehouse.ActualGood) -
+                              (x.Sum(x => x.warehouse.warehouse.request.QuantityOrdered == null ? 0 : x.warehouse.warehouse.request.QuantityOrdered) + 
+                               x.Sum(x => x.warehouse.ordering.QuantityOrdered == null ? 0 : x.warehouse.ordering.QuantityOrdered) +
+                               x.Sum(x => x.issue.Quantity == null ? 0 : x.issue.Quantity))
+                });
             //var totalRemaining = (from totalIn in _context.WarehouseReceived
             //                      where totalIn.IsActive == true
             //                      join totalOut in totalout
@@ -167,61 +146,44 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             //                        //  TotalMoveOrder = total.Key.TotalOrders
 
             //                      });
-
-            var orders = (from ordering in _context.Orders
-                          where ordering.FarmName == farms && ordering.PreparedDate == null && ordering.IsActive == true
-                          join warehouse in getReserve
-                          on ordering.ItemCode equals warehouse.ItemCode
-                          into leftJ
-                          from warehouse in leftJ.DefaultIfEmpty()
-
-                          group new
-                          {
-                              ordering, 
-                              warehouse
-                          }
-                              by new
-                          {
-                              ordering.Id,
-                              ordering.OrderDate,
-                              ordering.DateNeeded,
-                              ordering.FarmName,
-                              ordering.FarmCode,
-                              ordering.Category,
-                              ordering.ItemCode,
-                              ordering.ItemDescription,
-                              ordering.Uom,
-                              ordering.QuantityOrdered,
-                              ordering.IsActive,
-                              ordering.IsPrepared,
-                              Reserve = warehouse.Reserve != null ? warehouse.Reserve : 0,
-
-
-                              } into total
-
-                          orderby total.Key.DateNeeded ascending
-
-                          select new OrderDto
-                          {
-
-                              Id = total.Key.Id,
-                              OrderDate = total.Key.OrderDate.ToString("MM/dd/yyyy"),
-                              DateNeeded = total.Key.DateNeeded.ToString("MM/dd/yyyy"),
-                              Farm = total.Key.FarmName,
-                              FarmCode = total.Key.FarmCode,
-                              Category = total.Key.Category,
-                              ItemCode = total.Key.ItemCode,
-                              ItemDescription = total.Key.ItemDescription,
-                              Uom = total.Key.Uom,
-                              QuantityOrder = total.Key.QuantityOrdered,
-                              IsActive = total.Key.IsActive,
-                              IsPrepared = total.Key.IsPrepared,
-                              StockOnHand = total.Key.Reserve
-                     //         Days = total.Key.DateNeeded.Subtract(datenow).Days                         
-                          });
-
+            
+            var orders = _context.Orders
+                .Where(o => o.FarmName == farms && o.PreparedDate == null && o.IsActive == true)
+                .Join(getReserve, o => o.ItemCode, r => r.ItemCode, (ordering, warehouse) => new { ordering, warehouse})
+                .GroupBy(x => new {
+                    x.ordering.Id,
+                    x.ordering.OrderDate,
+                    x.ordering.DateNeeded,
+                    x.ordering.FarmName,
+                    x.ordering.FarmCode,
+                    x.ordering.Category,
+                    x.ordering.ItemCode,
+                    x.ordering.ItemDescription,
+                    x.ordering.Uom,
+                    x.ordering.QuantityOrdered,
+                    x.ordering.IsActive,
+                    x.ordering.IsPrepared,
+                    Reserve = x.warehouse.Reserve != null ? x.warehouse.Reserve : 0,
+                })
+                .OrderByDescending(x => x.Key.DateNeeded)
+                .Select(x => new OrderDto
+                {
+                    Id = x.Key.Id,
+                    OrderDate = x.Key.OrderDate.ToString("MM/dd/yyyy"),
+                    DateNeeded = x.Key.DateNeeded.ToString("MM/dd/yyyy"),
+                    Farm = x.Key.FarmName,
+                    FarmCode = x.Key.FarmCode,
+                    Category = x.Key.Category,
+                    ItemCode = x.Key.ItemCode,
+                    ItemDescription = x.Key.ItemDescription,
+                    Uom = x.Key.Uom,
+                    QuantityOrder = x.Key.QuantityOrdered,
+                    IsActive = x.Key.IsActive,
+                    IsPrepared = x.Key.IsPrepared,
+                    StockOnHand = x.Key.Reserve
+                });
+            
             return await orders.ToListAsync();
-
         }
         public async Task<bool> EditQuantityOrder(Ordering orders)
         {
@@ -271,7 +233,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                                .ToListAsync();
 
         }
-        public async Task<bool> ApprovePreparedDate(Ordering orders)
+        public async Task<bool> ApprovePreparedDate(Ordering orders) 
         {
 
             var order = await _context.Orders.Where(x => x.OrderNoPKey == orders.OrderNoPKey)
@@ -285,11 +247,9 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 items.RejectBy = null;
                 items.RejectedDate = null;
                 items.Remarks = null;
-
             }
 
             return true;
-
         }
         public async Task<bool> RejectPreparedDate(Ordering orders)
         {
@@ -312,6 +272,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
 
             return true;
         }
+
         public async Task<IReadOnlyList<OrderDto>> OrderSummary(string DateFrom, string DateTo)
         {
             var totalout = _context.Transformation_Preparation.GroupBy(x => new
@@ -326,41 +287,45 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 WarehouseId = x.Key.WarehouseId
             });
 
-            var totalRemaining = (from totalIn in _context.WarehouseReceived
-                                  join totalOut in totalout
+            var totalRemaining = 
+                
+                
+                (from totalIn in _context.WarehouseReceived
+                join totalOut in totalout
 
-                                  on totalIn.Id equals totalOut.WarehouseId
-                                  into leftJ
-                                  from totalOut in leftJ.DefaultIfEmpty()
+                    on totalIn.Id equals totalOut.WarehouseId
+                    into leftJ
+                from totalOut in leftJ.DefaultIfEmpty()
 
-                                  group totalOut by new
-                                  {
+                group totalOut by new
+                {
 
-                                      totalIn.Id,
-                                      totalIn.ItemCode,
-                                      totalIn.ItemDescription,
-                                      totalIn.ManufacturingDate,
-                                      totalIn.Expiration,
-                                      totalIn.ActualGood,
-                                      totalIn.ExpirationDays
+                    totalIn.Id,
+                    totalIn.ItemCode,
+                    totalIn.ItemDescription,
+                    totalIn.ManufacturingDate,
+                    totalIn.Expiration,
+                    totalIn.ActualGood,
+                    totalIn.ExpirationDays
 
-                                  } into total
+                }
+                into total
 
-                                  orderby total.Key.ExpirationDays ascending
+                orderby total.Key.ExpirationDays ascending
 
-                                  select new ItemStocks
-                                  {
-                                      WarehouseId = total.Key.Id,
-                                      ItemCode = total.Key.ItemCode,
-                                      ItemDescription = total.Key.ItemDescription,
-                                      ManufacturingDate = total.Key.ManufacturingDate,
-                                      ExpirationDate = total.Key.Expiration,
-                                      ExpirationDays = total.Key.ExpirationDays,
-                                      In = total.Key.ActualGood,
-                                      Out = total.Sum(x => x.Out),
-                                      Remaining = total.Key.ActualGood - total.Sum(x => x.Out)
+                select new ItemStocks
+                {
+                    WarehouseId = total.Key.Id,
+                    ItemCode = total.Key.ItemCode,
+                    ItemDescription = total.Key.ItemDescription,
+                    ManufacturingDate = total.Key.ManufacturingDate,
+                    ExpirationDate = total.Key.Expiration,
+                    ExpirationDays = total.Key.ExpirationDays,
+                    In = total.Key.ActualGood,
+                    Out = total.Sum(x => x.Out),
+                    Remaining = total.Key.ActualGood - total.Sum(x => x.Out)
 
-                                  });
+                });
 
             var totalOrders = _context.Orders.GroupBy(x => new
             {
@@ -376,61 +341,51 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             }).Where(x => x.IsPrepared == false);
 
 
-            var orders = (from ordering in _context.Orders                  
-                          where ordering.OrderDate >= DateTime.Parse(DateFrom) && ordering.OrderDate <= DateTime.Parse(DateTo)
-                          join warehouse in totalRemaining
-                          on ordering.ItemCode equals warehouse.ItemCode
-                          into leftJ
-
-                          from warehouse in leftJ.DefaultIfEmpty()
-
-                          group warehouse by new
-                          {
-
-                              ordering.Id,
-                              ordering.OrderDate,
-                              ordering.DateNeeded,
-                              ordering.FarmName,
-                              ordering.FarmCode,
-                              ordering.Category,
-                              ordering.ItemCode,
-                              ordering.ItemDescription,
-                              ordering.Uom,
-                              ordering.QuantityOrdered,
-                              ordering.IsActive,
-                              ordering.IsPrepared,
-                              ordering.PreparedDate,
-                              ordering.IsApproved
-                             
-
-                          } into total
-
-                          select new OrderDto
-                          {
-
-                              Id = total.Key.Id,
-                              OrderDate = total.Key.OrderDate.ToString("MM/dd/yyyy"),
-                              DateNeeded = total.Key.DateNeeded.ToString("MM/dd/yyyy"),
-                              Farm = total.Key.FarmName,
-                              FarmCode = total.Key.FarmCode,
-                              Category = total.Key.Category,
-                              ItemCode = total.Key.ItemCode,
-                              ItemDescription = total.Key.ItemDescription,
-                              Uom = total.Key.Uom,
-                              QuantityOrder = total.Key.QuantityOrdered,
-                              IsActive = total.Key.IsActive,
-                              IsPrepared = total.Key.IsPrepared,
-                              StockOnHand = total.Sum(x => x.Remaining),
-                              Difference = total.Sum(x => x.Remaining) - total.Key.QuantityOrdered,
-                              PreparedDate = total.Key.PreparedDate.ToString(),
-                              IsApproved = total.Key.IsApproved != null
-
-                          });
-
+            var orders = _context.Orders
+                .Where(ordering => ordering.OrderDate >= DateTime.Parse(DateFrom) && ordering.OrderDate <= DateTime.Parse(DateTo))
+                .GroupJoin(totalRemaining,
+                    ordering => ordering.ItemCode,
+                    warehouse => warehouse.ItemCode,
+                    (ordering, leftJ) => new { ordering, leftJ })
+                .SelectMany(x => x.leftJ.DefaultIfEmpty(),
+                    (x, warehouse) => new { x.ordering, warehouse })
+                .GroupBy(x => new
+                {
+                    x.ordering.Id,
+                    x.ordering.OrderDate,
+                    x.ordering.DateNeeded,
+                    x.ordering.FarmName,
+                    x.ordering.FarmCode,
+                    x.ordering.Category,
+                    x.ordering.ItemCode,
+                    x.ordering.ItemDescription,
+                    x.ordering.Uom,
+                    x.ordering.QuantityOrdered,
+                    x.ordering.IsActive,
+                    x.ordering.IsPrepared,
+                    x.ordering.PreparedDate,
+                    x.ordering.IsApproved
+                })
+                .Select(x => new OrderDto
+                {
+                    Id = x.Key.Id,
+                    OrderDate = x.Key.OrderDate.ToString("MM/dd/yyyy"),
+                    DateNeeded = x.Key.DateNeeded.ToString("MM/dd/yyyy"),
+                    Farm = x.Key.FarmName,
+                    FarmCode = x.Key.FarmCode,
+                    Category = x.Key.Category,
+                    ItemCode = x.Key.ItemCode,
+                    ItemDescription = x.Key.ItemDescription,
+                    Uom = x.Key.Uom,
+                    QuantityOrder = x.Key.QuantityOrdered,
+                    IsActive = x.Key.IsActive,
+                    IsPrepared = x.Key.IsPrepared,
+                    StockOnHand = x.Sum(x => x.warehouse.Remaining),
+                    Difference = x.Sum(x => x.warehouse.Remaining) - x.Key.QuantityOrdered,
+                    PreparedDate = x.Key.PreparedDate.ToString(),
+                    IsApproved = x.Key.IsApproved != null
+                });
             return await orders.ToListAsync();
-
-
-
         }
         public async Task<bool> AddNewOrders(Ordering orders)
         {
@@ -920,51 +875,42 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 OrderNo = x.Key.OrderNo,
                 OrderPKey = x.Key.OrderNoPKey,
                 QuantityPrepared = x.Sum(x => x.QuantityOrdered),
-
             });
 
-            var orders = (from ordering in _context.Orders
-                          where ordering.OrderNoPKey == id
-                          join moveorder in moveorders
-                          on ordering.Id equals moveorder.OrderPKey into leftJ
-
-                          from moveorder in leftJ.DefaultIfEmpty()
-
-                          group moveorder by new
-                          {
-                              ordering.Id,
-                              ordering.OrderNoPKey,
-                              ordering.OrderDate,
-                              ordering.DateNeeded,
-                              ordering.FarmName,
-                              ordering.FarmCode,
-                              ordering.Category,
-                              ordering.ItemCode,
-                              ordering.ItemDescription,
-                              ordering.Uom,
-                              ordering.QuantityOrdered,
-                              ordering.IsApproved,
-
-                          } into total
-
-
-                          select new OrderDto
-                          {
-                              Id = total.Key.Id,
-                              OrderNo = total.Key.OrderNoPKey,
-                              OrderDate = total.Key.OrderDate.ToString("MM/dd/yyyy"),
-                              DateNeeded = total.Key.DateNeeded.ToString("MM/dd/yyyy"),
-                              Farm = total.Key.FarmName,
-                              FarmCode = total.Key.FarmCode,
-                              Category = total.Key.Category,
-                              ItemCode = total.Key.ItemCode,
-                              ItemDescription = total.Key.ItemDescription,
-                              Uom = total.Key.Uom,
-                              QuantityOrder = total.Key.QuantityOrdered,
-                              IsApproved = total.Key.IsApproved != null,
-                              PreparedQuantity = total.Sum(x => x.QuantityPrepared),
-
-                          });
+            var orders = _context.Orders
+                .Where(o => o.OrderNoPKey == id)
+                .GroupJoin(moveorders, ordering => ordering.Id, moveOrder => moveOrder.OrderPKey, (ordering, moveOrder) => new { ordering , moveOrder})
+                .SelectMany(x => x.moveOrder.DefaultIfEmpty(), (x, moveorder) => new { x.ordering, moveorder })
+                .GroupBy(x => new
+                {
+                    x.ordering.Id,
+                    x.ordering.OrderNoPKey,
+                    x.ordering.OrderDate,
+                    x.ordering.DateNeeded,
+                    x.ordering.FarmName,
+                    x.ordering.FarmCode,
+                    x.ordering.Category,
+                    x.ordering.ItemCode,
+                    x.ordering.ItemDescription,
+                    x.ordering.Uom,
+                    x.ordering.QuantityOrdered,
+                    x.ordering.IsApproved,
+                }).Select(x => new OrderDto
+                {
+                    Id = x.Key.Id,
+                    OrderNo = x.Key.OrderNoPKey,
+                    OrderDate = x.Key.OrderDate.ToString("MM/dd/yyyy"),
+                    DateNeeded = x.Key.DateNeeded.ToString("MM/dd/yyyy"),
+                    Farm = x.Key.FarmName,
+                    FarmCode = x.Key.FarmCode,
+                    Category = x.Key.Category,
+                    ItemCode = x.Key.ItemCode,
+                    ItemDescription = x.Key.ItemDescription,
+                    Uom = x.Key.Uom,
+                    QuantityOrder = x.Key.QuantityOrdered,
+                    IsApproved = x.Key.IsApproved != null,
+                    PreparedQuantity = x.Sum(y => y.moveorder.QuantityPrepared),
+                });
 
             return await orders.ToListAsync();
 
@@ -1018,44 +964,35 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                                                                      .Where(x => x.IsTransact == true)
                                                                      .SumAsync(x => x.Quantity);
 
-            var totalRemaining = (from totalIn in _context.WarehouseReceived
-                                  where totalIn.Id == id && totalIn.ItemCode == itemcode && totalIn.IsActive == true
-                                  join totalOut in totalout
-                                  on totalIn.Id equals totalOut.WarehouseId
-                                  into leftJ
-                                  from totalOut in leftJ.DefaultIfEmpty()
-
-                                  group totalOut by new
-                                  {
-
-                                      totalIn.Id,
-                                      totalIn.ItemCode,
-                                      totalIn.ItemDescription,
-                                      totalIn.ManufacturingDate,
-                                      totalIn.Expiration,
-                                      totalIn.ActualGood,
-                                      totalIn.ExpirationDays
-                          
-                                  } into total
-
-                                  orderby total.Key.ExpirationDays ascending
-
-                                  select new ItemStocks
-                                  {
-                                      WarehouseId = total.Key.Id,
-                                      ItemCode = total.Key.ItemCode,
-                                      ItemDescription = total.Key.ItemDescription,
-                                      ManufacturingDate = total.Key.ManufacturingDate,
-                                      ExpirationDate = total.Key.Expiration,
-                                      ExpirationDays = total.Key.ExpirationDays,
-                                      In = total.Key.ActualGood,
-                                      Out = total.Sum(x => x.Out),
-                                      Remaining = total.Key.ActualGood - total.Sum(x => x.Out) - totaloutMoveorder - totalIssue
-
-                                  });
-
+            var totalRemaining = _context.WarehouseReceived
+                .Where(totalIn => totalIn.Id == id && totalIn.ItemCode == itemcode && totalIn.IsActive == true)
+                .GroupJoin(totalout, totalIn => totalIn.Id, totalOut => totalOut.WarehouseId,
+                    (totalIn, totalOut) => new { totalIn, totalOut })
+                .SelectMany(x => x.totalOut.DefaultIfEmpty(), (x, totalOut) => new { x.totalIn, totalOut })
+                .GroupBy(x => new
+                {
+                    x.totalIn.Id,
+                    x.totalIn.ItemCode,
+                    x.totalIn.ItemDescription,
+                    x.totalIn.ManufacturingDate,
+                    x.totalIn.Expiration,
+                    x.totalIn.ActualGood,
+                    x.totalIn.ExpirationDays
+                }).OrderBy(x => x.Key.ExpirationDays)
+                .Select(total => new ItemStocks
+                {
+                    WarehouseId = total.Key.Id,
+                    ItemCode = total.Key.ItemCode,
+                    ItemDescription = total.Key.ItemDescription,
+                    ManufacturingDate = total.Key.ManufacturingDate,
+                    ExpirationDate = total.Key.Expiration,
+                    ExpirationDays = total.Key.ExpirationDays,
+                    In = total.Key.ActualGood,
+                    Out = total.Sum(x => x.totalOut.Out),
+                    Remaining = total.Key.ActualGood - total.Sum(x => x.totalOut.Out) - totaloutMoveorder - totalIssue
+                });
             return await totalRemaining.Where(x => x.Remaining != 0)
-                                       .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync();
         }
         public async Task<IReadOnlyList<MoveOrderDto>> ListOfPreparedItemsForMoveOrder(int id)
         {
@@ -1136,24 +1073,37 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
 
             return true;
         }
-        public async Task<bool> ApprovalForMoveOrder(MoveOrder moveorder)
+        public async Task<(bool success, string message)> ApprovalForMoveOrder(MoveOrder moveorder)
         {
-            var existing = await _context.MoveOrders.Where(x => x.OrderNo == moveorder.OrderNo)
-                                                    .ToListAsync();
-
-            if (existing == null)
-                return false;
-
-            foreach(var items in existing)
+            
+            await using (var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable))
             {
+                try
+                {
+                    var existing = await _context.MoveOrders
+                        .Where(x => x.OrderNo == moveorder.OrderNo)
+                        .ToListAsync();
 
-                items.ApprovedDate = DateTime.Now;
-                items.ApproveDateTempo = DateTime.Now;
-                items.IsApprove = true;
+                    if (existing == null)
+                        return (false, "Order number not found");
+                    foreach (var item in existing)
+                    {
+                        item.ApprovedDate = DateTime.Now;
+                        item.ApproveDateTempo = DateTime.Now;
+                        item.IsApprove = true;
+                    }
+
+                    await _context.SaveChangesAsync();
+                    transaction.Commit();
+                    await _hub.Clients.All.SendAsync("RefreshOrderList", existing);
+                    return (true, "Order approved successfully");
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    transaction.Rollback();
+                    return (false, "Item is locked by another user");
+                }
             }
-
-            return true;
-
         }
         public async Task<bool> RejectForMoveOrder(MoveOrder moveorder)
         {
@@ -1291,7 +1241,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             var orders = _context.MoveOrders.Where(x => x.IsApproveReject == null)
                 .GroupBy(x => new
             {
-
                 x.OrderNo,
                 x.FarmName,
                 x.FarmCode,
@@ -1302,7 +1251,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 x.DeliveryStatus,
                 x.IsPrepared,
                 x.BatchNo
-
             }).Where(x => x.Key.IsApprove != true)
               .Where(x => x.Key.DeliveryStatus != null)
               .Where(x => x.Key.IsPrepared == true)
@@ -1318,7 +1266,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
               PreparedDate = x.Key.PreparedDate.ToString(),
               DeliveryStatus = x.Key.DeliveryStatus,
               BatchNo = x.Key.BatchNo
-
           }).Where(x => Convert.ToString(x.OrderNo).ToLower()
             .Contains(search.Trim().ToLower()));
 
@@ -1329,7 +1276,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             var orders = _context.MoveOrders.Where(x => x.IsActive == true)
                 .Select(x => new MoveOrderDto
             {
-
                 Id = x.Id,
                 OrderNo = x.OrderNo,
                 BarcodeNo = x.WarehouseId,
@@ -1342,7 +1288,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 Expiration = x.ExpirationDate.ToString(),
                 DeliveryStatus = x.DeliveryStatus,
                 BatchNo = x.BatchNo
-
             });
 
             return await orders.Where(x => x.OrderNo == orderid)
@@ -1388,7 +1333,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                  IsPrint = x.Key.IsPrint != null,
                  IsTransact = x.Key.IsTransact,
                  BatchNo = x.Key.BatchNo
-
              });
 
             return await PagedList<MoveOrderDto>.CreateAsync(orders, userParams.PageNumber, userParams.PageSize);
@@ -1484,7 +1428,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             var orders = _context.MoveOrders.Where(x => x.IsApproveReject == true)
                 .GroupBy(x => new
             {
-
                 x.OrderNo,
                 x.FarmName,
                 x.FarmCode,
@@ -1497,7 +1440,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 x.RejectedDateTempo,
                 x.Remarks,
                 x.BatchNo
-
             })
               .Where(x => x.Key.DeliveryStatus != null)
 
@@ -1586,7 +1528,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                ApprovedDate = x.Key.ApproveDateTempo.ToString(),
                IsPrint = x.Key.IsPrint != null,
                IsTransact = x.Key.IsTransact != null
-
            });
 
             return await orders.FirstOrDefaultAsync();
@@ -1599,14 +1540,12 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
               x.Id,
               x.ItemCode,
               x.ExpirationDays
-
           }).Select(x => new WarehouseInventory
           {
               WarehouseId = x.Key.Id,
               ItemCode = x.Key.ItemCode,
               ActualGood = x.Sum(x => x.ActualGood),
               ExpirationDays = x.Key.ExpirationDays
-              
           });
 
             var getTransformationPreparation = _context.Transformation_Preparation.Where(x => x.IsActive == true)
@@ -1635,7 +1574,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 WarehouseId = x.Key.WarehouseId
             });
 
-            var totalRemaining = (from warehouse in getWarehouseIn
+            var totalRemaining = 
+                (from warehouse in getWarehouseIn
                                   join preparation in getTransformationPreparation
                                   on warehouse.WarehouseId equals preparation.WarehouseId
                                   into leftJ1
@@ -1836,7 +1776,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             var orders = _context.MoveOrders.Where(x => x.IsApproveReject == null)
              .GroupBy(x => new
              {
-
                  x.OrderNo,
                  x.FarmName,
                  x.FarmCode,
@@ -1846,7 +1785,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                  x.IsApprove,
                  x.DeliveryStatus,
                  x.IsPrepared
-
              }).Where(x => x.Key.IsApprove != true)
            .Where(x => x.Key.DeliveryStatus != null)
            .Where(x => x.Key.IsPrepared == true)
@@ -1861,11 +1799,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             OrderDate = x.Key.OrderDate.ToString(),
             PreparedDate = x.Key.PreparedDate.ToString(),
             DeliveryStatus = x.Key.DeliveryStatus
-
         });
-
             return await orders.ToListAsync();
-
         }
 
         public async Task<IReadOnlyList<MoveOrderDto>> GetRejectMoveOrderNotification()
@@ -1873,7 +1808,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             var orders = _context.MoveOrders.Where(x => x.IsApproveReject == true)
             .GroupBy(x => new
             {
-
                 x.OrderNo,
                 x.FarmName,
                 x.FarmCode,
@@ -1885,7 +1819,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
                 x.IsReject,
                 x.RejectedDateTempo,
                 x.Remarks
-
             })
           .Where(x => x.Key.DeliveryStatus != null)
 
@@ -1902,11 +1835,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
             IsReject = x.Key.IsReject != null,
             RejectedDate = x.Key.RejectedDateTempo.ToString(),
             Remarks = x.Key.Remarks
-
         });
-
             return await orders.ToListAsync();
-
         }
 
         public async Task<bool> CancelControlInMoveOrder(Ordering order)
@@ -1971,10 +1901,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.ORDERING_REPOSITORY
            Remarks = x.Key.Remarks
 
        });
-
             return await orders.ToListAsync();
-
-
         }
     }
 }

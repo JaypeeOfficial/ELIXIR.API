@@ -109,25 +109,22 @@ namespace ELIXIR.API.Controllers.SETUP_CONTROLLER
 
         [HttpPost]
         [Route("AddNewCustomer")]
-        public async Task<IActionResult> CreateNewCustomer(Customer customer)
+        public async Task<IActionResult> AddNewCustomer(Customer customer)
         {
             if (ModelState.IsValid)
             {
+                var farmIdExists = await _unitOfWork.Customers.ValidateFarmId(customer.FarmTypeId);
+                if (!farmIdExists) return BadRequest("Farm Type does not exist, please add data first!");
 
-                var farmId = await _unitOfWork.Customers.ValidateFarmId(customer.FarmTypeId);
-
-                if (farmId == false)
-                    return BadRequest("Farm Type doesn't exist, Please add data first!");
-
-                if (await _unitOfWork.Customers.CustomerCodeExist(customer.CustomerCode))
-                    return BadRequest("Customer already Exist!, Please try something else!");
+                var customerCodeExists = await _unitOfWork.Customers.CustomerCodeExist(customer.CustomerCode);
+                if (customerCodeExists) return BadRequest("Customer already exists, please try another code!");
 
                 await _unitOfWork.Customers.AddNewCustomer(customer);
                 await _unitOfWork.CompleteAsync();
 
                 return CreatedAtAction("GetAllCustomer", new { customer.Id }, customer);
             }
-            return new JsonResult("Something went Wrong!") { StatusCode = 500 };
+            return new JsonResult("An error occurred") { StatusCode = 500 };
         }
 
         [HttpPut]

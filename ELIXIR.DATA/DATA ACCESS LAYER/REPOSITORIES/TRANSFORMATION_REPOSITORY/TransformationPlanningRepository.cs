@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.TRANSFORMATION_REPOSITORY
 {
@@ -128,7 +129,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.TRANSFORMATION_REPOSITORY
                                 .Where(x => x.Version == request.Version)
                                 .Where(x => x.IsActive == true)
                                 .ToListAsync();
-                                
         }
 
         public async Task<TransformationPlanningDto> ValidateTransformationPlanning(int id)
@@ -234,27 +234,41 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.TRANSFORMATION_REPOSITORY
             }).Where(x => x.IsActive == true);
 
 
-            var validateRequest = (from formula in _context.Formulas
-                                   where formula.ItemCode == planning.ItemCode && formula.Version == planning.Version
-                                   join requirements in _context.FormulaRequirements
-                                   on formula.Id equals requirements.TransformationFormulaId into leftJ
-                                   from requirements in leftJ.DefaultIfEmpty()
+            var validateRequest = _context.Formulas
+                .Where(formula => formula.ItemCode == planning.ItemCode && formula.Version == planning.Version)
+                .GroupJoin(_context.FormulaRequirements, formula => formula.Id,
+                    requirements => requirements.TransformationFormulaId,
+                    (formula, requirements) => new { formula, requirements })
+                .SelectMany(x => x.requirements.DefaultIfEmpty(), (x, requirements) => new { x.formula, requirements })
+                .Select(x => new TransformationWithRequirements()
+                {
+                    Id = x.requirements != null ? x.requirements.Id : 0,
+                    FormulaCode = x.formula.ItemCode,
+                    Version = x.formula.Version,
+                    ItemCode = x.requirements != null ? x.requirements.RawMaterial.ItemCode : null,
+                    ItemDescription = x.requirements != null ? x.requirements.ItemDescription : null,
+                    Uom = x.formula.Uom,
+                    Quantity = x.requirements != null ? x.requirements.Quantity : 0
 
-                                   select new TransformationWithRequirements
-                                   {
+                });
 
-                                       Id = requirements != null ? requirements.Id : 0,
-                                       FormulaCode = formula.ItemCode,
-                                       Version = formula.Version,
-                                       ItemCode = requirements != null ? requirements.RawMaterial.ItemCode : null,
-                                       ItemDescription = requirements != null ? requirements.ItemDescription : null,
-                                       Uom = formula.Uom,
-                                       Quantity = requirements != null ? requirements.Quantity : 0,
-
-                                   });
-
-
-            var validateStock = (from request in validateRequest
+            var validateStock = validateRequest
+                .GroupJoin(_context.WarehouseReceived, request => request.ItemCode, stock => stock.ItemCode,
+                    (request, stock) => new { request, stock })
+                .SelectMany(x => x.stock.DefaultIfEmpty(), (x, stock) => new { x.request, stock })
+                .GroupJoin(totalRequest, request => request.request.ItemCode, totalR => totalR.ItemCode,
+                    (request, totalR) => new { request.request, request.stock, totalR })
+                .GroupBy(x => new { x.request.ItemCode, x.request.Quantity, x.totalR. })
+                .Select(total => new MaterialRequirements
+                {
+                    ItemCode = total.Key.ItemCode,
+                    Quantity = total.Key.Quantity,
+                    Reserve = total.Sum(x => x.ActualGood) - total.Key.Reserve
+                })
+                .Where(x => x.WarehouseItemStatus == true);
+                
+                
+                (from request in validateRequest
                                  join stock in _context.WarehouseReceived
                                  on request.ItemCode equals stock.ItemCode into leftJ
                                  from stock in leftJ.DefaultIfEmpty()

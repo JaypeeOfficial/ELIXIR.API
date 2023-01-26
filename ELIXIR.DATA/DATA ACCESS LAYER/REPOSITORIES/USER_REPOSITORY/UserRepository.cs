@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -31,27 +32,27 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
         {
             try
             {
-                var users = (from user in _context.Users
-                             join role in _context.Roles on user.UserRoleId equals role.Id
-                             join department in _context.Departments on user.DepartmentId equals department.Id
-                         
-                             select new UserDto
-                             {
-                                 Id = user.Id,
-                                 FullName = user.FullName,
-                                 UserName = user.UserName,
-                                 Password = user.Password,
-                                 Status = user.IsActive,
-                                 UserRoleId = role.Id,
-                                 UserRole = role.RoleName,
-                                 DepartmentId = department.Id,
-                                 Department = department.DepartmentName,     
-                                 DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                                 AddedBy = user.AddedBy,
-                                 ModifiedBy = user.ModifiedBy,
-                                 Reason = user.Reason,
-                             });
-                return await users.ToListAsync();
+                var user = _context.Users
+                    .Join(_context.Roles, user => user.UserRoleId, role => role.Id, (user, role) => new { user, role })
+                    .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id,
+                        (ur, department) => new UserDto
+                        {
+                            Id = ur.user.Id,
+                            FullName = ur.user.FullName,
+                            UserName = ur.user.UserName,
+                            Password = ur.user.Password,
+                            Status = ur.user.IsActive,
+                            UserRoleId = ur.role.Id,
+                            UserRole = ur.role.RoleName,
+                            Department = department.DepartmentName,
+                            DepartmentId = department.Id,
+                            DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                            AddedBy = ur.user.AddedBy,
+                            ModifiedBy = ur.user.ModifiedBy,
+                            Reason = ur.user.Reason
+                        });
+
+                return await user.ToListAsync();
             }
             catch (Exception ex)
             {
@@ -63,56 +64,54 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
         public async Task<PagedList<UserDto>> GetAllUsersWithPagination( bool status, UserParams userParams)
         {
 
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         orderby user.DateAdded descending
-
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRoleId = role.Id,
-                             UserRole = role.RoleName,
-                             DepartmentId = department.Id,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason,
-                         }).Where(x => x.Status == status);
+            var users = _context.Users
+                .Join(_context.Roles, user => user.UserRoleId, role => role.Id, (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    }).OrderByDescending(x => x.DateAdded)
+                .Where(x => x.Status == status);
 
             return await PagedList<UserDto>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
         }
 
         public async Task<PagedList<UserDto>> GetUserByStatusWithPagination(UserParams userParams, bool status, string search)
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         orderby user.DateAdded descending
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRoleId = role.Id,
-                             UserRole = role.RoleName,
-                             DepartmentId = department.Id,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason,
-                         }).Where(x => x.Status == status)
-                           .Where(x => x.UserName.ToLower()
-                           .Contains(search.Trim().ToLower()));
-
+            var users = _context.Users.Join(_context.Roles, user => user.UserRoleId, role => role.Id,
+                    (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    }).Where(x => x.Status == status)
+                      .Where(x => x.UserName.ToLower()
+                      .Contains(search.Trim().ToLower()));
+            
             return await PagedList<UserDto>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
 
         }
@@ -120,53 +119,52 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
 
         public async Task<PagedList<UserDto>> GetUserByUserNameAsyncWithPagination(UserParams userParams, string username)
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRoleId = role.Id,
-                             UserRole = role.RoleName,
-                             DepartmentId = department.Id,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason,
-                         }).Where(x => x.UserName.ToLower()
-                           .Contains(username.Trim().ToLower()));
-
+            var users = _context.Users.Join(_context.Roles, user => user.UserRoleId, role => role.Id,
+                    (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    }).Where(x => x.UserName.ToLower().Contains((username.Trim().ToLower())));
+            
             return await PagedList<UserDto>.CreateAsync(users, userParams.PageNumber, userParams.PageSize);
 
         }
 
         public override async Task<UserDto> GetById(int id)
         {
-            var users = (from user in _context.Users
-                        join role in _context.Roles on user.UserRoleId equals role.Id
-                        join department in _context.Departments on user.DepartmentId equals department.Id
-                        select new UserDto
-                        {
-                            Id = user.Id,
-                            FullName = user.FullName,
-                            UserName = user.UserName,
-                            Password = user.Password,
-                            Status = user.IsActive,
-                            UserRoleId = role.Id,
-                            UserRole = role.RoleName,
-                            DepartmentId = department.Id,
-                            Department = department.DepartmentName,
-                            DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                            AddedBy = user.AddedBy,
-                            ModifiedBy = user.ModifiedBy,
-                            Reason = user.Reason,
-                        });
-
+            var users = _context.Users.Join(_context.Roles, user => user.UserRoleId, role => role.Id,
+                    (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    });
+                
             return await users.FirstOrDefaultAsync(x => x.Id == id);
 
         }
@@ -204,86 +202,84 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
 
         public async Task<bool> UserAlreadyExistsbyId(int id)
         {
-            var resut =  await _context.Users.FindAsync(id);
+            var result =  await _context.Users.FindAsync(id);
 
             return true;
         }
 
         public async Task<IReadOnlyList<UserDto>> GetUserByUserNameAsync(string username)
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRoleId = role.Id,
-                             UserRole = role.RoleName,
-                             DepartmentId = department.Id,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason,
-                         });
+            var users = _context.Users.Join(_context.Roles, user => user.UserRoleId, role => role.Id,
+                    (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    }).Where(x => x.UserName.ToLower().Contains(username.Trim().ToLower()));
+            
+                return await users.ToListAsync();
 
-            return await users               
-                              .Where(x => x.UserName.ToLower()
-                              .Contains(username.Trim().ToLower()))
-                              .ToListAsync();
-         
+
         }
 
         public async Task<IReadOnlyList<UserDto>> GetAllActiveUsers()
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRole = role.RoleName,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason
-                         });
+            var users = _context.Users
+                .Join(_context.Roles, user => user.UserRoleId, role => role.Id, (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.UserRoleId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRole = ur.role.RoleName,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason
+                    }).Where(x => x.Status == true);
 
-             return await users.Where(x => x.Status == true)
-                                                 .ToListAsync();
+            return await users.ToListAsync();
         }
 
         public async Task<IReadOnlyList<UserDto>> GetAllInActiveUsers()
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRole = role.RoleName,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                              Reason = user.Reason
-                         });
+            var users = _context.Users
+                .Join(_context.Roles, user => user.UserRoleId, role => role.Id, (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRole = ur.role.RoleName,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason
+                    }).Where(x => x.Status == false);
 
-            return await users.Where(x => x.Status == false)
-                                                .ToListAsync();
+            return await users.ToListAsync();
+
+           
         }
         public async Task<bool> AddNewUser(User user)
         {
@@ -383,7 +379,7 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
                 existingUser.ModifiedBy = "Admin";
 
             if(user.Reason == null)
-            existingUser.Reason = "Reopened Account";
+                existingUser.Reason = "Reopened Account";
 
             return true;
         }
@@ -476,9 +472,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
             return true;
         }
 
-
-
-
         public async Task<IReadOnlyList<Department>> GetAllActiveDeparment()
         {
             return await _context.Departments
@@ -500,30 +493,27 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
 
         public async Task<IReadOnlyList<UserDto>>GetUserByStatus(bool status)
         {
-            var users = (from user in _context.Users
-                         join role in _context.Roles on user.UserRoleId equals role.Id
-                         join department in _context.Departments on user.DepartmentId equals department.Id           
-                         select new UserDto
-                         {
-                             Id = user.Id,
-                             FullName = user.FullName,
-                             UserName = user.UserName,
-                             Password = user.Password,
-                             Status = user.IsActive,
-                             UserRoleId = role.Id,
-                             UserRole = role.RoleName,
-                             DepartmentId = department.Id,
-                             Department = department.DepartmentName,
-                             DateAdded = (user.DateAdded).ToString("MM/dd/yyyy"),
-                             AddedBy = user.AddedBy,
-                             ModifiedBy = user.ModifiedBy,
-                             Reason = user.Reason,
-                         });
+            var users = _context.Users.Join(_context.Roles, user => user.UserRoleId, role => role.Id,
+                    (user, role) => new { user, role })
+                .Join(_context.Departments, ur => ur.user.DepartmentId, department => department.Id, (ur, department) =>
+                    new UserDto
+                    {
+                        Id = ur.user.Id,
+                        FullName = ur.user.FullName,
+                        UserName = ur.user.UserName,
+                        Password = ur.user.Password,
+                        Status = ur.user.IsActive,
+                        UserRoleId = ur.role.Id,
+                        UserRole = ur.role.RoleName,
+                        DepartmentId = department.Id,
+                        Department = department.DepartmentName,
+                        DateAdded = (ur.user.DateAdded).ToString("MM/dd/yyyy"),
+                        AddedBy = ur.user.AddedBy,
+                        ModifiedBy = ur.user.ModifiedBy,
+                        Reason = ur.user.Reason,
+                    }).Where(x => x.Status == status);
 
-            return await users.Where(x => x.Status == status)
-                              .ToListAsync();
-
-
+            return await users.ToListAsync();
         }
 
         public async Task<IReadOnlyList<DepartmentDto>> GetDepartmentByStatus(bool status)

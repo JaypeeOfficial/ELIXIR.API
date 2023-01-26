@@ -341,7 +341,12 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES
                                            .ToListAsync();
         }
 
-        public async Task<PagedList<ModuleDto>> GetAllModulessWithPagination(bool status, UserParams userParams)
+        public Task<PagedList<ModuleDto>> GetAllModulessWithPagination(bool status, UserParams userParams)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<PagedList<ModuleDto>> GetAllModulesWithPagination(bool status, UserParams userParams)
         {
             var modules = _context.MainMenus.OrderByDescending(x => x.DateAdded)
                                            .Join(_context.Modules,

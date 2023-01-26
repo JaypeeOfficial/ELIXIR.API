@@ -198,53 +198,25 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
                QuantityOrdered = x.Sum(x => x.Quantity)
            });
 
-            var getSOH = (from warehouse in getWarehouseStock
-                          join preparation in getTransformation
-                          on warehouse.ItemCode equals preparation.ItemCode
-                          into leftJ1
-                          from preparation in leftJ1.DefaultIfEmpty()
-
-                          join issue in getIssueOut
-                          on warehouse.ItemCode equals issue.ItemCode
-                          into leftJ2
-                          from issue in leftJ2.DefaultIfEmpty()
-
-                          join moveorder in getMoveOrderOut
-                          on warehouse.ItemCode equals moveorder.ItemCode
-                          into leftJ3
-                          from moveorder in leftJ3.DefaultIfEmpty()
-
-                          join receipt in getReceiptIn
-                          on warehouse.ItemCode equals receipt.ItemCode
-                          into leftJ4
-                          from receipt in leftJ4.DefaultIfEmpty()
-
-
-                          group new
-                          {
-                              warehouse,
-                              preparation,
-                              moveorder,
-                              receipt,
-                              issue
-                          }
-
-                          by new
-                          {
-                              warehouse.ItemCode
-
-                          } into total
-
-                          select new SOHInventory
-                          {
-                              ItemCode = total.Key.ItemCode,
-                              SOH = total.Sum(x => x.warehouse.ActualGood == null ? 0 : x.warehouse.ActualGood) -
-                                    total.Sum(x => x.preparation.WeighingScale == null ? 0 : x.preparation.WeighingScale) -
-                                    total.Sum(x => x.moveorder.QuantityOrdered == null ? 0 : x.moveorder.QuantityOrdered) 
-                 
-                          });
-
-
+            var getSOH = getWarehouseStock
+                .GroupJoin(getTransformation, warehouse => warehouse.ItemCode, preparation => preparation.ItemCode, (warehouse, preparation) => new { warehouse, preparation })
+                .SelectMany(x => x.preparation.DefaultIfEmpty(), (x, preparation) => new { x.warehouse, preparation })
+                .GroupJoin(getIssueOut, x => x.warehouse.ItemCode, issue => issue.ItemCode, (x, issues) => new { x.warehouse, x.preparation, issues })
+                .SelectMany(x => x.issues.DefaultIfEmpty(), (x, issues) => new { x.warehouse, x.preparation, issues })
+                .GroupJoin(getMoveOrderOut, x => x.warehouse.ItemCode, moveOrder => moveOrder.ItemCode, (x, moveOrder) => new { x.warehouse, x.preparation, x.issues, moveOrder })
+                .SelectMany(x => x.moveOrder.DefaultIfEmpty(), (x, moveOrder) => new { x.warehouse, x.preparation, x.issues, moveOrder })
+                .GroupJoin(getReceiptIn, x => x.warehouse.ItemCode, receipt => receipt.ItemCode, (x, receipts) => new { x.warehouse, x.preparation, x.issues, x.moveOrder, receipts })
+                .SelectMany(x => x.receipts.DefaultIfEmpty(), (x, receipts) => new { x.warehouse, x.preparation, x.issues, x.moveOrder, receipts })
+                .GroupBy(x => x.warehouse.ItemCode)
+                .Select(x => new SOHInventory
+                {
+                    ItemCode = x.Key,
+                    SOH = x.Sum(y => y.warehouse.ActualGood) -
+                          x.Sum(y => y.preparation.WeighingScale == null ? 0 : y.preparation.WeighingScale) -
+                          x.Sum(y => y.issues.Quantity == null ? 0 : y.issues.Quantity) - x.Sum(y => y.moveOrder.QuantityOrdered == null ? 0 : y.moveOrder.QuantityOrdered) +
+                          x.Sum(y => y.receipts.Quantity == null ? 0 : y.receipts.Quantity)
+                });
+            
             var getReserve = (from warehouse in getWarehouseStock
                               join request in getTransformationReserve
                               on warehouse.ItemCode equals request.ItemCode
@@ -1532,7 +1504,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.INVENTORY_REPOSITORY
 
                              group new
                              {
-
                                  posummary,
                                  warehouse,
                                  moveorders,

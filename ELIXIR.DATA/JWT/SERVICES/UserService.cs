@@ -49,8 +49,7 @@ namespace ELIXIR.DATA.JWT.SERVICES
 
                 Subject = new ClaimsIdentity(new Claim[] {
                     new Claim("id", user.Id.ToString())
-
-                }),
+                }), 
                 Expires = DateTime.UtcNow.AddDays(1),
                 SigningCredentials = new SigningCredentials
                (new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
