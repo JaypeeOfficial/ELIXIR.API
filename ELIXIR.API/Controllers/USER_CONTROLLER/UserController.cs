@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace ELIXIR.API.Controllers
 {
-    [ApiExplorerSettings(IgnoreApi = true)]
+    [ApiExplorerSettings(IgnoreApi = false)]
 
     //[Authorize]
     public class UserController : BaseApiController

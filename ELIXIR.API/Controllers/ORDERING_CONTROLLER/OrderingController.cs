@@ -6,7 +6,10 @@ using ELIXIR.DATA.DTOs.ORDERING_DTOs;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
+using ELIXIR.DATA.SERVICES;
+using Microsoft.AspNetCore.SignalR;
 
 namespace ELIXIR.API.Controllers.ORDERING_CONTROLLER
 {
@@ -16,30 +19,24 @@ namespace ELIXIR.API.Controllers.ORDERING_CONTROLLER
         private readonly IUnitOfWork _unitOfWork;
         public OrderingController(IUnitOfWork unitofwork)
         {
-
             _unitOfWork = unitofwork;
-
         }
 
         [HttpGet]
         [Route("GetAllListofOrders")]
         public async Task<IActionResult> GetAllListofOrders([FromQuery] string farms)
         {
-
             var orders = await _unitOfWork.Order.GetAllListofOrders(farms);
 
             return Ok(orders);
-
         }
 
         [HttpPut]
         [Route("EditOrderQuantity")]
         public async Task<IActionResult> EditOrderQuantity([FromBody] Ordering order)
         {
-
             await _unitOfWork.Order.EditQuantityOrder(order);
             await _unitOfWork.CompleteAsync();
-
             return new JsonResult("Successfully edit order quantity!");
         }
 
@@ -468,11 +465,14 @@ namespace ELIXIR.API.Controllers.ORDERING_CONTROLLER
         [Route("ApproveListOfMoveOrder")]
         public async Task<IActionResult> ApproveListOfMoveOrder([FromBody] MoveOrder moveorder)
         {
+            (bool success, string messages) = await _unitOfWork.Order.ApprovalForMoveOrder(moveorder);
 
-            await _unitOfWork.Order.ApprovalForMoveOrder(moveorder);
+            if (!success)
+                return BadRequest(new { messages });
+            
             await _unitOfWork.CompleteAsync();
 
-            return new JsonResult("Successfully approved list for move order!");
+            return new JsonResult(new {messages});
         }
 
         [HttpPut]

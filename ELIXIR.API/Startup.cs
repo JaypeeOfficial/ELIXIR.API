@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using ELIXIR.API.ERRORS;
 using System.Net;
+using ELIXIR.DATA.SERVICES;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Cors;
 
@@ -99,7 +100,7 @@ namespace ELIXIR.API
                 });
               
             });
-
+            services.AddSignalR();
             services.AddControllers();
         }
 
@@ -129,5 +130,6 @@ namespace ELIXIR.API
                 endpoints.MapControllers();
             });
         }
+
     }
 }

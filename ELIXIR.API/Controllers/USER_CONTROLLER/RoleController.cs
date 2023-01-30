@@ -227,7 +227,7 @@ namespace ELIXIR.API.Controllers
 
 
         [HttpPost]
-        [Route("TagandModules")]
+        [Route("TagModules")]
         public async Task<IActionResult> TagModules([FromBody] UserRole_Modules[] roleModule)
         {
             foreach (UserRole_Modules module in roleModule)

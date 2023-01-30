@@ -36,7 +36,7 @@ namespace ELIXIR.API.Controllers
             return Ok();
         }
 
-        [HttpGet("badrequest")]
+        [HttpGet("badrequest")] 
         public ActionResult GetBadRequest()
         {
             return BadRequest(new ApiResponse(400));

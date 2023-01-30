@@ -350,7 +350,7 @@ namespace ELIXIR.API.Controllers.IMPORT_CONTROLLER
                 List<ImportPOSummary> itemcodeNotExist = new List<ImportPOSummary>();
                 List<ImportPOSummary> uomCodeNotExist = new List<ImportPOSummary>();
 
-                foreach (ImportPOSummary items in posummary)
+                foreach (var items in posummary)
                 {
 
                     var validateSupplier = await _unitOfWork.Imports.CheckSupplier(items.VendorName);
