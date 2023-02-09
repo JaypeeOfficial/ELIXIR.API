@@ -8,7 +8,6 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
 {
     public class TransformationReport
     {
-
         public int TransformationId { get; set; }
         public string PlanningDate { get; set; }
         public string ItemCode_Formula { get; set; }

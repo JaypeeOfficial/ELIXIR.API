@@ -121,61 +121,292 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
 
         }
 
-        public async Task<IReadOnlyList<TransformationReport>> TransformationReport(string DateFrom, string DateTo)
+        public async Task<IReadOnlyList<TransformationReportTesting>> TransformationReport(string DateFrom, string DateTo)
         {
 
-            var transform = (from planning in _context.Transformation_Planning
-                             where planning.ProdPlan >= DateTime.Parse(DateFrom) && planning.ProdPlan <= DateTime.Parse(DateTo) && planning.Status == true
-                             join preparation in _context.Transformation_Preparation
-                             on planning.Id equals preparation.TransformId into leftJ
-                             from preparation in leftJ.DefaultIfEmpty()
+            //var transform = (from planning in _context.Transformation_Planning
+            //                 where planning.ProdPlan >= DateTime.Parse(DateFrom) && planning.ProdPlan <= DateTime.Parse(DateTo) && planning.Status == true
+            //                 join preparation in _context.Transformation_Preparation
+            //                 on planning.Id equals preparation.TransformId into leftJ
+            //                 from preparation in leftJ.DefaultIfEmpty()
 
-                             join warehouse in _context.WarehouseReceived
-                             on planning.Id equals warehouse.TransformId into left2
-                             from warehouse in left2.DefaultIfEmpty()
+            //                 join warehouse in _context.WarehouseReceived
+            //                 on planning.Id equals warehouse.TransformId into left2
+            //                 from warehouse in left2.DefaultIfEmpty()
 
-                             select new TransformationReport
-                             {
-                                 TransformationId = planning.Id,
-                                 PlanningDate = planning.ProdPlan.ToString(),
-                                 ItemCode_Formula = planning.ItemCode,
-                                 ItemDescription_Formula = planning.ItemDescription,
-                                 Version = planning.Version,
-                                 Batch = planning.Batch,
-                                 Formula_Quantity = planning.Quantity,
-                                 ItemCode_Recipe = preparation.ItemCode != null ? preparation.ItemCode : null,
-                                 ItemDescription_Recipe = preparation.ItemDescription != null ? preparation.ItemDescription : null,
-                                 Recipe_Quantity = preparation.WeighingScale != null ? preparation.WeighingScale : 0,
-                                 DateTransformed = warehouse.ManufacturingDate.ToString()
+            //                 select new TransformationReport
+            //                 {
+            //                     TransformationId = planning.Id,
+            //                     PlanningDate = planning.ProdPlan.ToString(),
+            //                     ItemCode_Formula = planning.ItemCode,
+            //                     ItemDescription_Formula = planning.ItemDescription,
+            //                     Version = planning.Version,
+            //                     Batch = planning.Batch,
+            //                     Formula_Quantity = planning.Quantity,
+            //                     ItemCode_Recipe = preparation.ItemCode != null ? preparation.ItemCode : null,
+            //                     ItemDescription_Recipe = preparation.ItemDescription != null ? preparation.ItemDescription : null,
+            //                     Recipe_Quantity = preparation.WeighingScale != null ? preparation.WeighingScale : 0,
+            //                     DateTransformed = warehouse.ManufacturingDate.ToString()
 
-                             }).GroupBy(x => new
-                             {
-                                 x.TransformationId,
-                                 x.PlanningDate,
-                                 x.ItemCode_Formula,
-                                 x.ItemDescription_Formula,
-                                 x.Version,
-                                 x.Batch,
-                                 x.Formula_Quantity,
-                                 x.ItemCode_Recipe,
-                                 x.ItemDescription_Recipe,
-                                 x.Recipe_Quantity
+            //                 }).GroupBy(x => new
+            //                 {
+            //                     x.TransformationId,
+            //                     x.PlanningDate,
+            //                     x.ItemCode_Formula,
+            //                     x.ItemDescription_Formula,
+            //                     x.Version,
+            //                     x.Batch,
+            //                     x.Formula_Quantity,
+            //                     x.ItemCode_Recipe,
+            //                     x.ItemDescription_Recipe,
+            //                     x.Recipe_Quantity
 
-                             }).Select(transform => new TransformationReport
-                             {
-                                 TransformationId = transform.Key.TransformationId, 
-                                 PlanningDate = transform.Key.PlanningDate.ToString(), 
-                                 ItemCode_Formula = transform.Key.ItemCode_Formula, 
-                                 Version = transform.Key.Version, 
-                                 Batch = transform.Key.Batch, 
-                                 Formula_Quantity = transform.Key.Formula_Quantity, 
-                                 ItemCode_Recipe = transform.Key.ItemCode_Recipe, 
-                                 ItemDescription_Recipe = transform.Key.ItemDescription_Recipe, 
-                                 Recipe_Quantity = transform.Key.
+            //                 }).Select(transform => new TransformationReport
+            //                 {
+            //                     TransformationId = transform.Key.TransformationId,
+            //                     PlanningDate = transform.Key.PlanningDate.ToString(),
+            //                     ItemCode_Formula = transform.Key.ItemCode_Formula,
+            //                     Version = transform.Key.Version,
+            //                     Batch = transform.Key.Batch,
+            //                     Formula_Quantity = transform.Key.Formula_Quantity,
+            //                     ItemCode_Recipe = transform.Key.ItemCode_Recipe,
+            //                     ItemDescription_Recipe = transform.Key.ItemDescription_Recipe,
+            //                     Recipe_Quantity = transform.Key.Recipe_Quantity
 
-                             });
+            //                 });
 
-            return await transform.ToListAsync();
+            //return await transform.ToListAsync();
+
+
+
+
+            //var transform = (from planning in _context.Transformation_Planning
+            //                 where planning.ProdPlan >= DateTime.Parse(DateFrom) && planning.ProdPlan <= DateTime.Parse(DateTo) && planning.Status == true
+            //                 join preparation in _context.Transformation_Preparation
+            //                 on planning.Id equals preparation.TransformId into leftJ
+            //                 from preparation in leftJ.DefaultIfEmpty()
+
+            //                 join warehouse in _context.WarehouseReceived
+            //                 on planning.Id equals warehouse.TransformId into left2
+            //                 from warehouse in left2.DefaultIfEmpty()
+
+            //                 select new TransformationReport
+            //                 {
+            //                     TransformationId = planning.Id,
+            //                     PlanningDate = planning.ProdPlan.ToString(),
+            //                     ItemCode_Formula = planning.ItemCode,
+            //                     ItemDescription_Formula = planning.ItemDescription,
+            //                     Version = planning.Version,
+            //                     Batch = planning.Batch,
+            //                     Formula_Quantity = planning.Quantity,
+            //                     ItemCode_Recipe = preparation.ItemCode != null ? preparation.ItemCode : null,
+            //                     ItemDescription_Recipe = preparation.ItemDescription != null ? preparation.ItemDescription : null,
+            //                     Recipe_Quantity = preparation.WeighingScale != null ? preparation.WeighingScale : 0,
+            //                     DateTransformed = warehouse.ManufacturingDate.ToString()
+
+            //                 });
+
+            //var transformHistory = (from transform in _context.Transformation_Planning
+            //                        where transform.ProdPlan >= DateTime.Parse(DateFrom) && transform.ProdPlan <= DateTime.Parse(DateTo) && transform.Status == true
+            //                        select new
+            //                        {
+            //                            Id = transform.Id,
+            //                            ItemCode = transform.ItemCode,
+            //                            ItemDescription = transform.ItemDescription,
+            //                            Total = transform.Batch * transform.Quantity,
+            //                            Category = "Formula",
+            //                            Batch = transform.Batch,
+            //                            Version = transform.Version
+
+            //                        });
+
+
+            //var preparationHistory = from preparation in _context.Transformation_Preparation
+            //                         select new
+            //                         {
+            //                             Id = preparation.TransformId,
+            //                             ItemCode = preparation.ItemCode,
+            //                             ItemDescription = preparation.ItemDescription,
+            //                             Total = preparation.WeighingScale,
+            //                             Category = "Recipe",
+            //                             Batch = preparation.Batch,
+            //                             Version = preparation.Batch
+            //                         };
+
+
+            //var unionResult = transformHistory.Union(preparationHistory).Select(x => new TransformationReportTesting
+            //{
+            //    TransformId = x.Id,
+            //    ItemCode = x.ItemCode,
+            //    ItemDescription = x.ItemDescription,
+            //    TotalQuantity = x.Total,
+            //    Category = x.Category,
+            //    Batch = x.Batch,
+            //    Version = x.Version
+
+            //});
+
+
+            //var getDatesTransformed = (from planning in _context.Transformation_Planning
+            //                           where planning.ProdPlan >= DateTime.Parse(DateFrom) && planning.ProdPlan <= DateTime.Parse(DateTo) && planning.Status == true
+            //                           join warehouse in _context.WarehouseReceived
+            //                           on planning.Id equals warehouse.TransformId
+            //                           select new
+            //                           {
+            //                               TranformId = planning.Id,
+            //                               PlanningDate = planning.ProdPlan.ToString("MM/dd/yyyy"),
+            //                               TransformDate = warehouse.ReceivingDate.ToString("MM/dd/yyyy")
+            //                           });
+
+
+
+            //var finalResult = (from union in unionResult
+            //                   join dates in getDatesTransformed
+            //                   on union.TransformId equals dates.TranformId
+            //                   into leftJ
+            //                   from dates in leftJ.DefaultIfEmpty()
+
+            //                   select new TransformationReportTesting
+            //                   {
+            //                       TransformId = union.TransformId, 
+            //                       ItemCode = union.ItemCode,
+            //                       ItemDescription = union.ItemDescription, 
+            //                       TotalQuantity = union.TotalQuantity, 
+            //                       Category = union.Category, 
+            //                       Batch = union.Batch, 
+            //                       Version = union.Version, 
+            //                       PlanningDate = dates.PlanningDate, 
+            //                       DateTransformed = dates.TransformDate
+            //                   });
+
+            //    return await finalResult.ToListAsync();
+
+            //   .OrderByDescending(x => x.PreparedDate);
+
+
+            //return await unionResult.OrderBy(x => x.TransformId)
+            //                        .ToListAsync();
+
+            //        var transformationPlanning = _context.Transformation_Planning
+            //.Select(x => new
+            //{
+            //    TransformId = x.Id,
+            //    ItemCode = x.ItemCode,
+            //    ItemDescription = x.ItemDescription,
+            //    Total = x.Batch * x.Quantity,
+            //    Category = "Formula"
+            //});
+
+            //        var transformationPreparation = _context.Transformation_Preparation
+            //            .Select(x => new
+            //            {
+            //                TransformId = x.TransformId,
+            //                ItemCode = x.ItemCode,
+            //                ItemDescription = x.ItemDescription,
+            //                Total = x.WeighingScale,
+            //                Category = "Recipe"
+            //            });
+
+            //        var result = transformationPlanning.Union(transformationPreparation)
+            //                       .Select(x => new TransformationReportTesting
+            //                       {
+            //                           TransformId = x.TransformId,
+            //                           ItemCode = x.ItemCode,
+            //                           ItemDescription = x.ItemDescription,
+            //                           TotalQuantity = x.Total,
+            //                           Category = x.Category
+
+            //                       });
+
+            //        return await result.ToListAsync();
+
+            //var result = (from tp in _context.Transformation_Planning
+            //              join warehouse in _context.WarehouseReceived on tp.Id equals warehouse.TransformId
+            //              where tp.ProdPlan >= DateTime.Parse(DateFrom) && tp.ProdPlan <= DateTime.Parse(DateTo) && tp.Status == true
+            //              select new
+            //              {
+            //                  TransformId = tp.Id,
+            //                  ItemCode = tp.ItemCode,
+            //                  ItemDescription = tp.ItemDescription,
+            //                  Total = tp.Batch * tp.Quantity,
+            //                  Category = "Formula",
+            //                  ProdPlan = tp.ProdPlan
+            //                  DateTransformed = warehouse.ReceivingDate
+            //              }).Union(
+            //             from tp in _context.Transformation_Preparation
+            //             group tp by new { tp.ItemCode, tp.ItemDescription } into g
+            //             select new
+            //             {
+            //                 TransformId = g.First().TransformId,
+            //                 ItemCode = g.Key.ItemCode,
+            //                 ItemDescription = g.Key.ItemDescription,
+            //                 Total = g.Sum(x => x.WeighingScale),
+            //                 Category = "Recipe",
+            //                 ProdPlan = (DateTime?)null,
+            //                 DateTransFormed = (DateTime?)null
+            //             });
+
+            //var filteredPlanning = _context.Transformation_Planning                      
+            //          .Where(tp => tp.ProdPlan >= DateTime.Parse(DateFrom) && tp.ProdPlan <= DateTime.Parse(DateTo) && tp.Status == true);
+
+            var result = (from tp in _context.Transformation_Planning
+                          where tp.ProdPlan >= DateTime.Parse(DateFrom) && tp.ProdPlan <= DateTime.Parse(DateTo) && tp.Status == true
+                          join warehouse in _context.WarehouseReceived on tp.Id equals warehouse.TransformId
+                        
+                          select new
+                          {
+                              TransformId = tp.Id,
+                              ItemCode = tp.ItemCode,
+                              ItemDescription = tp.ItemDescription,
+                              Total = tp.Batch * tp.Quantity,
+                              Category = "Formula",
+                              ProdPlan = tp.ProdPlan.ToString(),
+                              DateTransformed = warehouse.ReceivingDate.ToString(),
+                              Version = tp.Version,
+                              Batch = tp.Batch
+
+                          }).Union(
+             from tp2 in _context.Transformation_Planning
+             join tp in _context.Transformation_Preparation on tp2.Id equals tp.TransformId
+             where tp2.ProdPlan >= DateTime.Parse(DateFrom) && tp2.ProdPlan <= DateTime.Parse(DateTo) && tp2.Status == true && tp.IsActive == true && tp.IsMixed == true
+             group tp by new { tp.TransformId, tp.ItemCode, tp.ItemDescription, tp2.Version, tp2.Batch } into g
+             select new
+             {
+                 TransformId = g.Key.TransformId,
+                 ItemCode = g.Key.ItemCode,
+                 ItemDescription = g.Key.ItemDescription,
+                 Total = g.Sum(x => x.WeighingScale),
+                 Category = "Recipe",
+                 ProdPlan = (string)null,
+                 DateTransformed = (string)null,
+                 Version = g.Key.Version,
+                 Batch = g.Key.Batch
+             });
+
+
+            return await result.Select(x => new TransformationReportTesting
+            {
+                TransformId = x.TransformId,
+                ItemCode = x.ItemCode,
+                ItemDescription = x.ItemDescription,
+                TotalQuantity = x.Total,
+                Category = x.Category,
+                PlanningDate = x.ProdPlan,
+                DateTransformed = x.DateTransformed,
+                Version = x.Version, 
+                Batch = x.Batch
+            }).ToListAsync();
+
+            //return await result.Select(x => new TransformationReportTesting
+            //{
+            //    TransformId = x.TransformId,
+            //    ItemCode = x.ItemCode,
+            //    ItemDescription = x.ItemDescription,
+            //    TotalQuantity = x.Total,
+            //    Category = x.Category,
+            //    PlanningDate = x.ProdPlan,
+            //    DateTransformed = x.DateTransformed
+            //}).ToListAsync(); 
 
         }
 
