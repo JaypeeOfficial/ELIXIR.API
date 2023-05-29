@@ -24,11 +24,13 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string TransactionType { get; set; }
         public string MoveOrderBy { get; set; }
         public string MoveOrderDate { get; set; }
+        public string PreparedDate { get; set; }
         public string TransactedDate { get; set; }
         public string DateNeeded { get; set; }
         public string TransactedBy { get; set; }
         public string BatchNo { get; set; }
         public string DeliveryDate { get; set; }
+
 
 
     }

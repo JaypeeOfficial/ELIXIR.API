@@ -431,7 +431,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                               ExpirationDate = moveorder.ExpirationDate.ToString(),
                               TransactionType = moveorder.DeliveryStatus,
                               MoveOrderBy = moveorder.PreparedBy,
-                              MoveOrderDate = moveorder.PreparedDate.ToString(),
+                              MoveOrderDate = moveorder.ApprovedDate.ToString(),
+                              PreparedDate = moveorder.PreparedDate.ToString(),
                               BatchNo = moveorder.BatchNo,
                               TransactedBy = transactmoveorder.PreparedBy,
                               TransactedDate = transactmoveorder.PreparedDate.ToString()
