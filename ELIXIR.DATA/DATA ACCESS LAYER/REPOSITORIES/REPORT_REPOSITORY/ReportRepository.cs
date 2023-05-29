@@ -466,7 +466,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                                 Quantity = receipt.ActualGood,
                                 ExpirationDate = receipt.Expiration.ToString(),
                                 TransactBy = receiptHeader.PreparedBy,
-                                TransactDate = receipt.ReceivingDate.ToString()
+                                TransactDate = receipt.ReceivingDate.ToString(),
+                                TransactionDate = receiptHeader.TransactionDate.ToString()
 
                             });
 
@@ -498,7 +499,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                               Quantity = issuedetails != null ? issuedetails.Quantity : 0,
                               ExpirationDate = issuedetails != null ? issuedetails.ExpirationDate.ToString() : null,
                               TransactBy = issue.PreparedBy,
-                              TransactDate = issuedetails != null ? issuedetails.PreparedDate.ToString() : null
+                              TransactDate = issuedetails != null ? issuedetails.PreparedDate.ToString() : null,
+                              TransactionDate = issue.TransactionDate.ToString()
 
                           });
 

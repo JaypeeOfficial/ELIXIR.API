@@ -22,6 +22,8 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string TransactBy { get; set; }
         public string TransactDate { get; set; }
 
+        public string TransactionDate { get; set; }
+
 
     }
 }

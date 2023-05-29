@@ -67,8 +67,6 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.MODELS.INVENTORY_MODEL
             set; 
         }
 
-        public DateTime? TransactionDate { get; set; }
-
         public bool IsActive {
             get; 
             set; 
