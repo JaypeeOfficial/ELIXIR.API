@@ -17,9 +17,11 @@ namespace ELIXIR.DATA.DTOs.RECEIVING_DTOs
         public string PR_Date { get; set; }
         public string ItemCode { get; set; }
         public string ItemDescription { get; set; }
+        public string UOM { get; set; }
         public string Supplier { get; set; }
         public decimal QuantityOrdered { get; set; }
         public decimal ActualGood { get; set; }
+        public decimal SOH { get; set; }
         public decimal Reject { get; set; }
         public string ExpirationDate { get; set; }
         public int ExpirationDay { get; set; }
@@ -28,6 +30,8 @@ namespace ELIXIR.DATA.DTOs.RECEIVING_DTOs
         public bool IsWareHouseReceive { get; set; }
         public bool IsExpiryApprove { get; set; }
         public string ManufacturingDate { get; set; }
+        public string ReceivingDate { get; set; }
+
 
 
 
