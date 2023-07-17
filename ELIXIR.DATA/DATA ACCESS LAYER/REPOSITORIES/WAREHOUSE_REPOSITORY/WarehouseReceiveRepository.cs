@@ -763,10 +763,12 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.WAREHOUSE_REPOSITORY
                                           ItemCode = total.Key.ItemCode,
                                           ItemDescription = total.Key.ItemDescription,
                                           ManufacturingDate = total.Key.ManufacturingDate.ToString("MM/dd/yyyy"),
-                                          ActualGood = total.Key.ActualGood - total.Key.PreparationOut - total.Key.MoveOrderOut - total.Key.IssueOut,
+                                          SOH = total.Key.ActualGood - total.Key.PreparationOut - total.Key.MoveOrderOut - total.Key.IssueOut,
+                                          ActualGood = total.Key.ActualGood,
                                           ExpirationDate = total.Key.Expiration.ToString(),
                                           ExpirationDay = total.Key.ExpirationDays,
-
+                                          UOM = total.Key.Uom,
+                                          ReceivingDate = total.Key.ReceivingDate.ToString()
                                       });
 
             return await warehouseInventory.ToListAsync();

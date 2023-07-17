@@ -13,6 +13,7 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string CustomerCode { get; set; }
         public string CustomerName { get; set; }
         public string Details { get; set; }
+        public string Remarks { get; set; }
         public string ItemCode { get; set; }
         public string ItemDescription { get; set; }
         public string Uom { get; set; }
@@ -21,7 +22,6 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string ExpirationDate { get; set; }
         public string TransactBy { get; set; }
         public string TransactDate { get; set; }
-
         public string TransactionDate { get; set; }
 
 

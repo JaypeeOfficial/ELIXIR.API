@@ -13,6 +13,7 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string SupplierCode { get; set; }
         public string SupplierName { get; set; }
         public string Details { get; set; }
+        public string Remarks { get; set; }
         public string ItemCode { get; set; }
         public string ItemDescription { get; set; }
         public string Uom { get; set; }
