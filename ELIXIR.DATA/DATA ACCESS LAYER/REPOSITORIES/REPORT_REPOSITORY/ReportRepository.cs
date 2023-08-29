@@ -358,24 +358,27 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                               TransformId = tp.Id,
                               ItemCode = tp.ItemCode,
                               ItemDescription = tp.ItemDescription,
-                              Total = tp.Batch * tp.Quantity,
+                              ActualQuantity = tp.Batch * tp.Quantity,
+                              TotalQuantity = tp.Batch * tp.Quantity,
                               Category = "Formula",
                               ProdPlan = tp.ProdPlan.ToString(),
                               DateTransformed = warehouse.ReceivingDate.ToString(),
                               Version = tp.Version,
                               Batch = tp.Batch
 
+
                           }).Union(
              from tp2 in _context.Transformation_Planning
              join tp in _context.Transformation_Preparation on tp2.Id equals tp.TransformId
              where tp2.ProdPlan >= DateTime.Parse(DateFrom) && tp2.ProdPlan <= DateTime.Parse(DateTo) && tp2.Status == true && tp.IsActive == true && tp.IsMixed == true
-             group tp by new { tp.TransformId, tp.ItemCode, tp.ItemDescription, tp2.Version, tp2.Batch } into g
+             group tp by new { tp.TransformId, tp.ItemCode, tp.QuantityNeeded, tp.ItemDescription, tp2.Version, tp2.Batch } into g
              select new
              {
                  TransformId = g.Key.TransformId,
                  ItemCode = g.Key.ItemCode,
                  ItemDescription = g.Key.ItemDescription,
-                 Total = g.Sum(x => x.WeighingScale),
+                 ActualQuantity = g.Sum(x => x.WeighingScale),
+                 TotalQuantity = g.Key.QuantityNeeded,
                  Category = "Recipe",
                  ProdPlan = (string)null,
                  DateTransformed = (string)null,
@@ -389,7 +392,8 @@ namespace ELIXIR.DATA.DATA_ACCESS_LAYER.REPOSITORIES.REPORT_REPOSITORY
                 TransformId = x.TransformId,
                 ItemCode = x.ItemCode,
                 ItemDescription = x.ItemDescription,
-                TotalQuantity = x.Total,
+                ActualQuantity = x.ActualQuantity,
+                TotalQuantity = x.TotalQuantity,
                 Category = x.Category,
                 PlanningDate = x.ProdPlan,
                 DateTransformed = x.DateTransformed,

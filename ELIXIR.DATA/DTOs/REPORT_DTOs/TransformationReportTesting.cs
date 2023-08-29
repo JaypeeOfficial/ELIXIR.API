@@ -13,11 +13,13 @@ namespace ELIXIR.DATA.DTOs.REPORT_DTOs
         public string ItemCode { get; set; }
         public string ItemDescription { get; set; }
         public decimal TotalQuantity { get; set; }
+        public decimal ActualQuantity { get; set; }
         public string Category { get; set; }
         public int Batch { get; set; }
         public int Version { get; set; }
         public string PlanningDate { get; set; }
         public string DateTransformed { get; set; }
+
 
 
     }
